@@ -1,0 +1,371 @@
+<div class="apidocDiv">
+<style>
+/*csslint
+*/
+.apidocDiv {
+    background: #fff;
+    font-family: Arial, Helvetica, sans-serif;
+}
+.apidocDiv a[href] {
+    color: #33f;
+    font-weight: bold;
+    text-decoration: none;
+}
+.apidocDiv a[href]:hover {
+    text-decoration: underline;
+}
+.apidocCodeCommentSpan {
+    background: #bbf;
+    color: #000;
+    display: block;
+}
+.apidocCodeKeywordSpan {
+    color: #d00;
+    font-weight: bold;
+}
+.apidocCodePre {
+    background: #eef;
+    border: 1px solid;
+    color: #777;
+    padding: 5px;
+    white-space: pre-wrap;
+}
+.apidocFooterDiv {
+    margin-top: 20px;
+    text-align: center;
+}
+.apidocModuleLi {
+    margin-top: 10px;
+}
+.apidocSectionDiv {
+    border-top: 1px solid;
+    margin-top: 20px;
+}
+.apidocSignatureSpan {
+    color: #777;
+    font-weight: bold;
+}
+</style>
+<h1>api documentation for
+    <a
+
+        href="https://github.com/jackbowman/email-addresses"
+
+    >email-addresses (v2.0.2)</a>
+</h1>
+<h4>An email address parser based on rfc5322</h4>
+<div class="apidocSectionDiv"><a
+    href="#apidoc.tableOfContents"
+    id="apidoc.tableOfContents"
+><h1>table of contents</h1></a><ol>
+
+    <li class="apidocModuleLi"><a href="#apidoc.module.email-addresses">module email-addresses</a><ol>
+
+        <li>
+
+            <a class="apidocElementLiA" href="#apidoc.element.email-addresses.email-addresses">
+            function <span class="apidocSignatureSpan"></span>email-addresses
+            <span class="apidocSignatureSpan">(opts)</span>
+            </a>
+
+        </li>
+
+        <li>
+
+            <a class="apidocElementLiA" href="#apidoc.element.email-addresses.parseAddressList">
+            function <span class="apidocSignatureSpan">email-addresses.</span>parseAddressList
+            <span class="apidocSignatureSpan">(opts)</span>
+            </a>
+
+        </li>
+
+        <li>
+
+            <a class="apidocElementLiA" href="#apidoc.element.email-addresses.parseOneAddress">
+            function <span class="apidocSignatureSpan">email-addresses.</span>parseOneAddress
+            <span class="apidocSignatureSpan">(opts)</span>
+            </a>
+
+        </li>
+
+    </ol></li>
+
+</ol></div>
+
+<div class="apidocSectionDiv">
+<h1><a href="#apidoc.module.email-addresses" id="apidoc.module.email-addresses">module email-addresses</a></h1>
+
+
+    <h2>
+        <a href="#apidoc.element.email-addresses.email-addresses" id="apidoc.element.email-addresses.email-addresses">
+        function <span class="apidocSignatureSpan"></span>email-addresses
+        <span class="apidocSignatureSpan">(opts)</span>
+        </a>
+    </h2>
+    <ul>
+    <li>description and source-code<pre class="apidocCodePre">function parse5322(opts) {
+
+    // tokenizing functions
+
+    function inStr() { return pos &#x3c; len; }
+    function curTok() { return parseString[pos]; }
+    function getPos() { return pos; }
+    function setPos(i) { pos = i; }
+    function nextTok() { pos += 1; }
+    function initialize() {
+        pos = 0;
+        len = parseString.length;
+    }
+
+    // parser helper functions
+
+    function o(name, value) {
+        return {
+            name: name,
+            tokens: value || &#x22;&#x22;,
+            semantic: value || &#x22;&#x22;,
+            children: []
+        };
+    }
+
+    function wrap(name, ast) {
+        var n;
+        if (ast === null) { return null; }
+        n = o(name);
+        n.tokens = ast.tokens;
+        n.semantic = ast.semantic;
+        n.children.push(ast);
+        return n;
+    }
+
+    function add(parent, child) {
+        if (child !== null) {
+            parent.tokens += child.tokens;
+            parent.semantic += child.semantic;
+        }
+        parent.children.push(child);
+        return parent;
+    }
+
+    function compareToken(fxnCompare) {
+        var tok;
+        if (!inStr()) { return null; }
+        tok = curTok();
+        if (fxnCompare(tok)) {
+            nextTok();
+            return o(&#x27;token&#x27;, tok);
+        }
+        return null;
+    }
+
+    function literal(lit) {
+        return function literalFunc() {
+            return wrap(&#x27;literal&#x27;, compareToken(function (tok) {
+                return tok === lit;
+            }));
+        };
+    }
+
+    function and() {
+        var args = arguments;
+        return function andFunc() {
+            var i, s, result, start;
+            start = getPos();
+            s = o(&#x27;and&#x27;);
+            for (i = 0; i &#x3c; args.length; i += 1) {
+                result = args[i]();
+                if (result === null) {
+                    setPos(start);
+                    return null;
+                }
+                add(s, result);
+            }
+            return s;
+        };
+    }
+
+    function or() {
+        var args = arguments;
+        return function orFunc() {
+            var i, result, start;
+            start = getPos();
+            for (i = 0; i &#x3c; args.length; i += 1) {
+                result = args[i]();
+                if (result !== null) {
+                    return result;
+                }
+                setPos(start);
+            }
+            return null;
+        };
+    }
+
+    function opt(prod) {
+        return function optFunc() {
+            var result, start;
+            start = getPos();
+            result = prod();
+            if (result !== null) {
+                return result;
+            }
+            else {
+                setPos(start);
+                return o(&#x27;opt&#x27;);
+            }
+        };
+    }
+
+    function invis(prod) {
+        return function invisFunc() {
+            var result = prod();
+            if (result !== null) {
+                result.semantic = &#x22;&#x22;;
+            }
+            return result;
+        };
+    }
+
+    function colwsp(prod) {
+        return function collapseSemanticWhitespace() {
+            var result = prod();
+            if (result !== null &#x26;&#x26; result.semantic.length &#x3e; 0) {
+                result.semantic = &#x22; &#x22;;
+            }
+            return result;
+        };
+    }
+
+    function star(prod, minimum) {
+        return function starFunc() {
+            var s, result, count, start, min;
+            start = getPos();
+            s = o(&#x27;star&#x27;);
+            count = 0;
+            min = minimum === undefined ? 0 : minimum;
+            while ((result = prod()) !== null) {
+                count = count + 1;
+                add(s, result);
+            }
+            if (count &#x3e;= min) {
+                return s;
+            }
+            else {
+                setPos(start);
+                return null;
+            }
+        };
+    }
+
+    // One expects names to get normalized like this:
+    // &#x22;  First  Last &#x22; -&#x3e; &#x22;First Last&#x22;
+    // &#x22;First Last&#x22; -&#x3e; &#x22;First Last&#x22;
+    // &#x22;First   Last&#x22; -&#x3e; &#x22;First Last&#x22;
+    function collapseWhitespace(s) {
+        function isWhitespace(c) {
+            return c === &#x27; &#x27; ||
+                   c === &#x27;\t&#x27; || ...</pre></li>
+    <li>example usage<pre class="apidocCodePre">n/a</pre></li>
+    </ul>
+
+
+
+    <h2>
+        <a href="#apidoc.element.email-addresses.parseAddressList" id="apidoc.element.email-addresses.parseAddressList">
+        function <span class="apidocSignatureSpan">email-addresses.</span>parseAddressList
+        <span class="apidocSignatureSpan">(opts)</span>
+        </a>
+    </h2>
+    <ul>
+    <li>description and source-code<pre class="apidocCodePre">function parseAddressListSimple(opts) {
+    var result;
+
+    opts = handleOpts(opts, {
+        rfc6532: true,
+        simple: true
+    });
+    if (opts === null) { return null; }
+
+    result = parse5322(opts);
+
+    return opts.simple ? result : result.addresses;
+}</pre></li>
+    <li>example usage<pre class="apidocCodePre">...
+ address: [Object],
+ local: [Object],
+ domain: [Object] },
+  name: &#x27;Jack Bowman&#x27;,
+  address: &#x27;jack@fogcreek.com&#x27;,
+  local: &#x27;jack&#x27;,
+  domain: &#x27;fogcreek.com&#x27; }
+&#x3e; addrs.<span class="apidocCodeKeywordSpan">parseAddressList</span>(&#x27;jack@fogcreek.com, Bob &#x3c;bob@example.com&#x3e
+;&#x27;)
+[ { parts:
+ { name: null,
+   address: [Object],
+   local: [Object],
+   domain: [Object] },
+name: null,
+address: &#x27;jack@fogcreek.com&#x27;,
+...</pre></li>
+    </ul>
+
+
+
+    <h2>
+        <a href="#apidoc.element.email-addresses.parseOneAddress" id="apidoc.element.email-addresses.parseOneAddress">
+        function <span class="apidocSignatureSpan">email-addresses.</span>parseOneAddress
+        <span class="apidocSignatureSpan">(opts)</span>
+        </a>
+    </h2>
+    <ul>
+    <li>description and source-code<pre class="apidocCodePre">function parseOneAddressSimple(opts) {
+    var result;
+
+    opts = handleOpts(opts, {
+        rfc6532: true,
+        simple: true
+    });
+    if (opts === null) { return null; }
+
+    result = parse5322(opts);
+
+    if ((!result) ||
+        (!opts.partial &#x26;&#x26;
+            (opts.simple &#x26;&#x26; result.length &#x3e; 1) ||
+            (!opts.simple &#x26;&#x26; result.addresses.length &#x3e; 1))) {
+        return null;
+    }
+
+    return opts.simple ?
+        result &#x26;&#x26; result[0] :
+        result &#x26;&#x26; result.addresses &#x26;&#x26; result.addresses[0];
+}</pre></li>
+    <li>example usage<pre class="apidocCodePre">...
+
+```
+$ node
+&#x3e; addrs = require(&#x22;email-addresses&#x22;)
+{ [Function: parse5322]
+parseOneAddress: [Function: parseOneAddressSimple],
+parseAddressList: [Function: parseAddressListSimple] }
+&#x3e; addrs.<span class="apidocCodeKeywordSpan">parseOneAddress</span>(&#x27;&#x22;Jack Bowman&#x22; &#x3c;jack@fogcreek.com&#x3e
+;&#x27;)
+{ parts:
+ { name: [Object],
+   address: [Object],
+   local: [Object],
+   domain: [Object] },
+name: &#x27;Jack Bowman&#x27;,
+address: &#x27;jack@fogcreek.com&#x27;,
+...</pre></li>
+    </ul>
+
+
+</div>
+
+<div class="apidocFooterDiv">
+    [ this document was created with
+    <a href="https://github.com/kaizhu256/node-utility2" target="_blank">utility2</a>
+    ]
+</div>
+</div>
